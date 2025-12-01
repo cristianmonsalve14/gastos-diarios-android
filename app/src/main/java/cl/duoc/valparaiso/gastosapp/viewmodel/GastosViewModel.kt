@@ -1,5 +1,6 @@
 package cl.duoc.valparaiso.gastosapp.viewmodel
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cl.duoc.valparaiso.gastosapp.model.Gasto
@@ -15,6 +16,7 @@ data class GastoFormUiState(
     val monto: String = "",
     val descripcion: String = "",
     val categoria: CategoriaGasto = CategoriaGasto.OTROS,
+    val fotoComprobante: Uri? = null,
     val errores: Map<String, String> = emptyMap(),
     val isLoading: Boolean = false
 )
@@ -62,6 +64,10 @@ class GastosViewModel : ViewModel() {
         _formUiState.value = _formUiState.value.copy(categoria = categoria)
     }
 
+    fun onFotoComprobanteChange(uri: Uri?) {
+        _formUiState.value = _formUiState.value.copy(fotoComprobante = uri)
+    }
+
     fun validarFormulario(): Boolean {
         val errores = mutableMapOf<String, String>()
         val estado = _formUiState.value
@@ -93,7 +99,8 @@ class GastosViewModel : ViewModel() {
                     monto = _formUiState.value.monto.toDouble(),
                     descripcion = _formUiState.value.descripcion.trim(),
                     categoria = _formUiState.value.categoria,
-                    fecha = LocalDateTime.now()
+                    fecha = LocalDateTime.now(),
+                    fotoComprobante = _formUiState.value.fotoComprobante?.toString()
                 )
 
                 kotlinx.coroutines.delay(500) // Simular guardado
@@ -116,6 +123,28 @@ class GastosViewModel : ViewModel() {
 
     fun eliminarGasto(gastoId: String) {
         _gastos.value = _gastos.value.filter { it.id != gastoId }
+    }
+
+    // ← NUEVA FUNCIÓN: Eliminar foto del gasto
+    fun eliminarFotoDelGasto(gastoId: String) {
+        _gastos.value = _gastos.value.map { gasto ->
+            if (gasto.id == gastoId) {
+                gasto.copy(fotoComprobante = null)
+            } else {
+                gasto
+            }
+        }
+    }
+
+    // ← NUEVA FUNCIÓN: Actualizar foto del gasto
+    fun actualizarFotoDelGasto(gastoId: String, nuevoUri: String?) {
+        _gastos.value = _gastos.value.map { gasto ->
+            if (gasto.id == gastoId) {
+                gasto.copy(fotoComprobante = nuevoUri)
+            } else {
+                gasto
+            }
+        }
     }
 
     private fun actualizarResumen(gastos: List<Gasto>) {

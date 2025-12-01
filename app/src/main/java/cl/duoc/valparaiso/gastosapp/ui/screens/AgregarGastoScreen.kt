@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -14,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import android.net.Uri
 import cl.duoc.valparaiso.gastosapp.model.CategoriaGasto
 import cl.duoc.valparaiso.gastosapp.viewmodel.GastosViewModel
 
@@ -25,6 +27,19 @@ fun AgregarGastoScreen(
 ) {
     val formState by gastosViewModel.formUiState.collectAsState()
     var expandedCategoria by remember { mutableStateOf(false) }
+    var showCamera by remember { mutableStateOf(false) }
+    var fotoCapturada by remember { mutableStateOf<Uri?>(null) }
+
+    if (showCamera) {
+        CameraScreen(
+            onPhotoCapture = { uri ->
+                fotoCapturada = uri
+                showCamera = false
+            },
+            onDismiss = { showCamera = false }
+        )
+        return
+    }
 
     Scaffold(
         topBar = {
@@ -130,9 +145,34 @@ fun AgregarGastoScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Botón de Cámara
+            Button(
+                onClick = { showCamera = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.PhotoCamera, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Capturar Comprobante")
+            }
+
+            // Mostrar foto capturada
+            if (fotoCapturada != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "✓ Foto capturada: ${fotoCapturada?.lastPathSegment}",
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
+
             // Botón Guardar
             Button(
                 onClick = {
+                    // ← ESTA ES LA LÍNEA NUEVA
+                    gastosViewModel.onFotoComprobanteChange(fotoCapturada)
+
                     gastosViewModel.guardarGasto()
                     if (formState.errores.isEmpty() && !formState.isLoading) {
                         navController.popBackStack()

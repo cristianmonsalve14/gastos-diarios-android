@@ -2,6 +2,7 @@ package cl.duoc.valparaiso.gastosapp.ui.screens
 
 import cl.duoc.valparaiso.gastosapp.navigation.Route
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,20 +13,26 @@ import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
+import coil.compose.AsyncImage
 import cl.duoc.valparaiso.gastosapp.viewmodel.GastosViewModel
 import cl.duoc.valparaiso.gastosapp.model.Gasto
+import android.net.Uri
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,6 +43,18 @@ fun DashboardScreen(
     // Observar estados del ViewModel
     val gastos by gastosViewModel.gastos.collectAsStateWithLifecycle()
     val resumen by gastosViewModel.resumenMensual.collectAsStateWithLifecycle()
+
+    // Estado para el diálogo de foto
+    var gastoSeleccionado by remember { mutableStateOf<Gasto?>(null) }
+
+    // Diálogo de foto
+    if (gastoSeleccionado != null) {
+        FotoComprobanteDialog(
+            gasto = gastoSeleccionado!!,
+            gastosViewModel = gastosViewModel,
+            onDismiss = { gastoSeleccionado = null }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -56,7 +75,6 @@ fun DashboardScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-                    // TODO: Navegar a AgregarGastoScreen
                     navController.navigate(Route.AgregarGasto.path)
                 },
                 containerColor = MaterialTheme.colorScheme.primary,
@@ -118,12 +136,13 @@ fun DashboardScreen(
                 }
             } else {
                 items(
-                    items = gastos.take(5), // Solo mostrar los 5 más recientes
+                    items = gastos.take(5),
                     key = { it.id }
                 ) { gasto ->
                     GastoItemCard(
                         gasto = gasto,
-                        onDeleteClick = { gastosViewModel.eliminarGasto(it) }
+                        onDeleteClick = { gastosViewModel.eliminarGasto(it) },
+                        onFotoClick = { gastoSeleccionado = it }
                     )
                 }
             }
@@ -312,7 +331,8 @@ private fun GastosPorCategoriaCard(
 @Composable
 private fun GastoItemCard(
     gasto: Gasto,
-    onDeleteClick: (String) -> Unit
+    onDeleteClick: (String) -> Unit,
+    onFotoClick: (Gasto) -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -321,77 +341,113 @@ private fun GastoItemCard(
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(16.dp)
         ) {
             Row(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Emoji de categoría con fondo
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-                    contentAlignment = Alignment.Center
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        gasto.categoria.emoji,
-                        fontSize = 24.sp
-                    )
+                    // Emoji de categoría con fondo
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            gasto.categoria.emoji,
+                            fontSize = 24.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            gasto.descripcion,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            gasto.categoria.displayName,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            gasto.formatearFechaCompleta(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
-
                 Column(
-                    modifier = Modifier.weight(1f)
+                    horizontalAlignment = Alignment.End
                 ) {
                     Text(
-                        gasto.descripcion,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onSurface
+                        "-${gasto.formatearMonto()}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.error
                     )
-                    Text(
-                        gasto.categoria.displayName,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        gasto.formatearFechaCompleta(),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+
+                    IconButton(
+                        onClick = { onDeleteClick(gasto.id) },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Eliminar gasto",
+                            tint = MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
 
-            Column(
-                horizontalAlignment = Alignment.End
-            ) {
-                Text(
-                    "-${gasto.formatearMonto()}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.error
-                )
-
-                IconButton(
-                    onClick = { onDeleteClick(gasto.id) },
-                    modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "Eliminar gasto",
-                        tint = MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.size(18.dp)
+            // Mostrar indicador de foto clickeable
+            if (gasto.fotoComprobante != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onFotoClick(gasto) },
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
                     )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            "📸",
+                            fontSize = 16.sp
+                        )
+                        Text(
+                            "Comprobante adjunto",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
         }
@@ -428,6 +484,139 @@ private fun EmptyStateCard() {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
             )
+        }
+    }
+}
+
+@Composable
+private fun FotoComprobanteDialog(
+    gasto: Gasto,
+    gastosViewModel: GastosViewModel,
+    onDismiss: () -> Unit
+) {
+    var mostrarCamara by remember { mutableStateOf(false) }
+    var fotoRecapturada by remember { mutableStateOf<Uri?>(null) }
+
+    // Si está mostrando cámara
+    if (mostrarCamara) {
+        CameraScreen(
+            onPhotoCapture = { uri ->
+                fotoRecapturada = uri
+                gastosViewModel.actualizarFotoDelGasto(gasto.id, uri.toString())
+                mostrarCamara = false
+            },
+            onDismiss = { mostrarCamara = false }
+        )
+        return
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .wrapContentHeight()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Título
+                Text(
+                    "Comprobante",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                )
+
+                // Mostrar imagen
+                if (gasto.fotoComprobante != null) {
+                    AsyncImage(
+                        model = Uri.parse(gasto.fotoComprobante),
+                        contentDescription = "Foto comprobante",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(300.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Información del gasto
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp)
+                    ) {
+                        Text("${gasto.categoria.emoji} ${gasto.descripcion}")
+                        Text("Monto: ${gasto.formatearMonto()}", style = MaterialTheme.typography.bodySmall)
+                        Text("Fecha: ${gasto.formatearFechaCompleta()}", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Botones (ahora 3)
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Primera fila: Eliminar y Recapturar
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                gastosViewModel.eliminarFotoDelGasto(gasto.id)
+                                onDismiss()
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(40.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Text("Eliminar", fontSize = 12.sp)
+                        }
+
+                        Button(
+                            onClick = { mostrarCamara = true },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(40.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            )
+                        ) {
+                            Text("Recapturar", fontSize = 12.sp)
+                        }
+                    }
+
+                    // Segunda fila: Cerrar (ancho completo)
+                    Button(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(40.dp)
+                    ) {
+                        Text("Cerrar", fontSize = 12.sp)
+                    }
+                }
+            }
         }
     }
 }

@@ -1,22 +1,30 @@
 package cl.duoc.valparaiso.gastosapp.ui.screens
 
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import android.net.Uri
-import cl.duoc.valparaiso.gastosapp.model.CategoriaGasto
+
 import cl.duoc.valparaiso.gastosapp.viewmodel.GastosViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -25,22 +33,40 @@ fun AgregarGastoScreen(
     navController: NavController,
     gastosViewModel: GastosViewModel = viewModel()
 ) {
+    // ---- ESTADOS ----
+    val context = LocalContext.current // Contexto necesario para guardar la foto
     val formState by gastosViewModel.formUiState.collectAsState()
     var expandedCategoria by remember { mutableStateOf(false) }
     var showCamera by remember { mutableStateOf(false) }
-    var fotoCapturada by remember { mutableStateOf<Uri?>(null) }
+    var fotoCapturada by remember { mutableStateOf<Bitmap?>(null) }
+    val categorias = listOf(
+        "Alimentación", "Transporte", "Entretenimiento", "Compras",
+        "Servicios", "Salud", "Educación", "Otros"
+    )
 
+    // ---- NAVEGACIÓN Y LÓGICA DE UI ----
+
+    // Efecto que se dispara cuando el ViewModel indica que el guardado fue exitoso.
+    LaunchedEffect(formState.exito) {
+        if (formState.exito) {
+            navController.popBackStack() // Vuelve a la pantalla anterior
+            gastosViewModel.limpiarFormulario() // Resetea el formulario para la próxima vez
+        }
+    }
+
+    // Si `showCamera` es true, muestra la pantalla de la cámara en lugar del formulario.
     if (showCamera) {
         CameraScreen(
-            onPhotoCapture = { uri ->
-                fotoCapturada = uri
-                showCamera = false
-            },
-            onDismiss = { showCamera = false }
+            onPhotoTaken = { bitmap ->
+                fotoCapturada = bitmap // Guardamos el Bitmap recibido
+                showCamera = false // Cerramos la cámara para volver al formulario
+            }
         )
+        // Usamos 'return' para que el resto del Composable (el formulario) no se ejecute.
         return
     }
 
+    // ---- INTERFAZ DE USUARIO (FORMULARIO) ----
     Scaffold(
         topBar = {
             TopAppBar(
@@ -61,64 +87,52 @@ fun AgregarGastoScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Campo Monto
+            // --- CAMPO MONTO ---
             OutlinedTextField(
                 value = formState.monto,
                 onValueChange = gastosViewModel::onMontoChange,
                 label = { Text("Monto") },
-                leadingIcon = {
-                    Icon(Icons.Default.MonetizationOn, contentDescription = null)
-                },
+                leadingIcon = { Icon(Icons.Default.MonetizationOn, contentDescription = null) },
                 isError = formState.errores.containsKey("monto"),
                 supportingText = {
-                    formState.errores["monto"]?.let { error ->
-                        Text(error, color = MaterialTheme.colorScheme.error)
-                    }
+                    formState.errores["monto"]?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 },
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Campo Descripción
+            // --- CAMPO DESCRIPCIÓN ---
             OutlinedTextField(
                 value = formState.descripcion,
                 onValueChange = gastosViewModel::onDescripcionChange,
                 label = { Text("Descripción") },
-                leadingIcon = {
-                    Icon(Icons.Default.Description, contentDescription = null)
-                },
+                leadingIcon = { Icon(Icons.Default.Description, contentDescription = null) },
                 isError = formState.errores.containsKey("descripcion"),
                 supportingText = {
-                    formState.errores["descripcion"]?.let { error ->
-                        Text(error, color = MaterialTheme.colorScheme.error)
-                    }
+                    formState.errores["descripcion"]?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 },
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Selector de Categoría
+            // --- SELECTOR DE CATEGORÍA ---
             ExposedDropdownMenuBox(
                 expanded = expandedCategoria,
                 onExpandedChange = { expandedCategoria = !expandedCategoria }
             ) {
                 OutlinedTextField(
-                    value = formState.categoria.toString(),
-                    onValueChange = { },
+                    value = formState.categoria,
+                    onValueChange = {},
                     readOnly = true,
                     label = { Text("Categoría") },
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCategoria)
-                    },
-                    modifier = Modifier
-                        .menuAnchor()
-                        .fillMaxWidth()
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCategoria) },
+                    modifier = Modifier.menuAnchor().fillMaxWidth()
                 )
                 ExposedDropdownMenu(
                     expanded = expandedCategoria,
                     onDismissRequest = { expandedCategoria = false }
                 ) {
-                    CategoriaGasto.values().forEach { categoria ->
+                    categorias.forEach { categoria ->
                         DropdownMenuItem(
-                            text = { Text(categoria.toString()) },
+                            text = { Text(categoria) }, // Simplificado para claridad
                             onClick = {
                                 gastosViewModel.onCategoriaChange(categoria)
                                 expandedCategoria = false
@@ -128,61 +142,50 @@ fun AgregarGastoScreen(
                 }
             }
 
-            // Error general
+            // --- MENSAJE DE ERROR GENERAL ---
             formState.errores["general"]?.let { error ->
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
-                ) {
-                    Text(
-                        text = error,
-                        modifier = Modifier.padding(16.dp),
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                }
+                Text(error, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(vertical = 8.dp))
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Botón de Cámara
+            // --- BOTÓN CÁMARA ---
             Button(
                 onClick = { showCamera = true },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(Icons.Default.PhotoCamera, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(Modifier.width(8.dp))
                 Text("Capturar Comprobante")
             }
 
-            // Mostrar foto capturada
+            // --- VISTA PREVIA DE LA FOTO ---
             if (fotoCapturada != null) {
-                Card(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "✓ Foto capturada: ${fotoCapturada?.lastPathSegment}",
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
+                Image(
+                    bitmap = fotoCapturada!!.asImageBitmap(),
+                    contentDescription = "Comprobante capturado",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop
+                )
             }
 
-            // Botón Guardar
+            Spacer(Modifier.weight(1f)) // Empuja el botón de guardar hacia abajo
+
+            // --- BOTÓN GUARDAR ---
             Button(
                 onClick = {
-                    // ← ESTA ES LA LÍNEA NUEVA
-                    gastosViewModel.onFotoComprobanteChange(fotoCapturada)
-
+                    // ¡LÓGICA CORREGIDA!
+                    // 1. Pasamos el bitmap de la foto al ViewModel.
+                    //gastosViewModel.onFotoComprobanteChange(fotoCapturada)
+                    // 2. Llamamos a guardar, pasándole el contexto necesario para crear el archivo.
                     gastosViewModel.guardarGasto()
-                    if (formState.errores.isEmpty() && !formState.isLoading) {
-                        navController.popBackStack()
-                    }
                 },
                 enabled = !formState.isLoading,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if (formState.isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                 } else {
                     Text("Guardar Gasto")
                 }

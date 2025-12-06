@@ -2,12 +2,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Permisos de cámara y almacenamiento -->
-    <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <!-- 🌐 Permisos de Internet para conectar con el backend -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <!-- Indicar que la cámara es opcional pero deseada -->
+    <!-- 📸 Permisos de cámara -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!--
+        Nota: Los permisos de almacenamiento (WRITE/READ) han cambiado.
+        Si guardas las fotos en el directorio privado de la app, no son necesarios.
+        Esta es la práctica recomendada para versiones modernas de Android.
+    -->
+
+    <!-- Indicar que la cámara es una característica deseada pero no obligatoria -->
     <uses-feature
         android:name="android.hardware.camera"
         android:required="false" />
@@ -20,19 +27,29 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.GastosApp">
-
+        android:theme="@style/Theme.GastosApp"
+        android:usesCleartextTraffic="true"
+        tools:targetApi="31">
+        <!--
+            android:usesCleartextTraffic="true" es CRUCIAL. Permite que tu app
+            se conecte a tu backend local a través de HTTP (ej: http://10.0.2.2:8080),
+            lo cual está bloqueado por defecto en versiones recientes de Android.
+        -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.GastosApp">
+            android:theme="@style/Theme.GastosApp"
+            android:windowSoftInputMode="adjustResize">
+            <!--
+                android:windowSoftInputMode="adjustResize" ayuda a que la pantalla
+                se ajuste correctamente cuando aparece el teclado en los formularios.
+            -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
     </application>
 
 </manifest>

@@ -4,21 +4,35 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 data class Gasto(
-    val id: String = "",
-    val monto: Double = 0.0,
-    val descripcion: String = "",
-    val categoria: CategoriaGasto = CategoriaGasto.OTROS,
-    val fecha: LocalDateTime = LocalDateTime.now(),
-    val ubicacion: String? = null,
-    val fotoComprobante: String? = null
+    val id: Long, // El ID de un gasto existente nunca debería ser nulo.
+    val monto: Double,
+    val descripcion: String,
+    val categoria: String,
+    // El campo 'fecha' es un String, tal como viene del servidor.
+    val fecha: String,
+    val fotoUrl: String?
 ) {
-    fun formatearMonto(): String = "$${String.format("%.0f", monto)}"
-    fun formatearFecha(): String = fecha.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
-    fun formatearFechaCompleta(): String = fecha.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+    /**
+     * Propiedad segura que convierte el String de la fecha a un objeto LocalDateTime.
+     * La usaremos para cualquier manipulación de fechas en la UI.
+     */
+    val fechaAsLocalDateTime: LocalDateTime
+        get() {
+            return try {
+                // Intenta convertir el String a un objeto LocalDateTime
+                LocalDateTime.parse(fecha, DateTimeFormatter.ISO_DATE_TIME)
+            } catch (e: Exception) {
+                // Si falla, devuelve la fecha actual para evitar que la app se caiga.
+                LocalDateTime.now()
+            }
+        }
 }
 
+// El resto de los data class no necesitan estar dentro del mismo archivo,
+// pero los mantenemos por ahora para seguir tu estructura.
+
 enum class CategoriaGasto(val displayName: String, val emoji: String) {
-    COMIDA("Comida", "🍔"),
+    ALIMENTACION("Alimentación", "🍔"),
     TRANSPORTE("Transporte", "🚌"),
     ENTRETENIMIENTO("Entretenimiento", "🎬"),
     COMPRAS("Compras", "🛒"),
@@ -26,13 +40,12 @@ enum class CategoriaGasto(val displayName: String, val emoji: String) {
     SALUD("Salud", "🏥"),
     EDUCACION("Educación", "📚"),
     OTROS("Otros", "💼");
-
-    override fun toString(): String = "$emoji $displayName"
 }
 
 data class ResumenMensual(
     val totalGastado: Double = 0.0,
-    val gastosPorCategoria: Map<CategoriaGasto, Double> = emptyMap(),
+    val gastosPorCategoria: Map<String, Double> = emptyMap(),
     val promediosDiarios: Double = 0.0,
     val cantidadTransacciones: Int = 0
 )
+

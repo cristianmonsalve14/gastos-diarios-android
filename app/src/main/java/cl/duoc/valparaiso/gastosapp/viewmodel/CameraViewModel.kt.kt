@@ -16,7 +16,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class CameraViewModel : ViewModel() {
+class `CameraViewModel.kt` : ViewModel() {
 
     // Estado para guardar el bitmap de la foto capturada. La UI observará este estado.
     val capturedBitmap = mutableStateOf<Bitmap?>(null)

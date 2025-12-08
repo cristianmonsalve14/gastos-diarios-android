@@ -40,7 +40,7 @@ Este proyecto fue desarrollado por:
 
 #### ✅ IE 3.1.2 - Microservicios (15%)
 - Backend Spring Boot en puerto 8081
-- Base de datos PostgreSQL con tablas normalizadas
+- Base de datos MySQL con tablas normalizadas
 - Endpoints: GET, POST, PUT, DELETE completamente funcionales
 - CRUD de gastos con sincronización
 
@@ -174,7 +174,7 @@ Este proyecto fue desarrollado por:
 
 ### Backend
 *   **Spring Boot** (v3.x)
-*   **PostgreSQL** (v12+)
+*   **MySQL** 
 *   **JPA/Hibernate**
 *   **Spring Data JPA**
 
@@ -191,7 +191,7 @@ Este proyecto fue desarrollado por:
 
 ### Para Backend (Opcional)
 - **Java 17+**
-- **PostgreSQL 12+**
+- **MySQL**
 - **Maven 3.8+** o **Gradle 8.x**
 
 ### Permisos Requeridos

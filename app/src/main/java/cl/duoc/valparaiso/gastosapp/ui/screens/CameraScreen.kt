@@ -29,10 +29,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import cl.duoc.valparaiso.gastosapp.viewmodel.CameraViewModel
 
 @Composable
 fun CameraScreen(
-    cameraViewModel: `CameraViewModel.kt` = viewModel(),
+    cameraViewModel: CameraViewModel = viewModel(),
     onPhotoTaken: (Bitmap) -> Unit // Callback para devolver la foto a la pantalla anterior
 ) {
     val context = LocalContext.current
